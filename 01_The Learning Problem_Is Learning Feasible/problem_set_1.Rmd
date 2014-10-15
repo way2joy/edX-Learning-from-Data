@@ -1,0 +1,345 @@
+---
+title: "edX CS_1156x_Learning From Data | Problem Set 1"
+author: "Christian Burkhart"
+date: "Tuesday, October 14, 2014"
+output: html_document
+---
+
+```{r}
+library(ggplot2)
+```
+
+
+
+**1. What types of learning, if any, best describe the following three scenarios:**
+
+(i) A coin classifcation system is created for a vending machine. In order to do this, the developers obtain exact coin specifcations from the U.S. Mint and derive a statistical model of the size, weight, and denomination, which the vending machine then uses to classify its coins.
+(ii) Instead of calling the U.S. Mint to obtain coin information, an algorithm is presented with a large set of labeled coins. The algorithm uses this data to infer decision boundaries which the vending machine then uses to classify its coins.
+(iii) A computer develops a strategy for playing Tic-Tac-Toe by playing repeatedly and adjusting its strategy by penalizing moves that eventually lead to losing.
+
+
+
+(a) i Supervised Learning, ii Unsupervised Learning, iii Reinforcement Learning
+(b) i Supervised Learning, ii Not learning, iii Unsupervised Learning
+(c) i Not learning, ii Reinforcement Learning, iii Supervised Learning
+(d) i Not learning, ii Supervised Learning, iii Reinforcement Learning
+(e) i Supervised Learning, ii Reinforcement Learning, iii Unsupervised Learning
+
+
+> d is the right solution.
+      
+    
+------
+
+**2. Which of the following problems are best suited for the learning approach?**
+
+(i) Classifying numbers into primes and non-primes.
+(ii) Detecting potential fraud in credit card charges.
+(iii) Determining the time it would take a falling object to hit the ground.
+(iv) Determining the optimal cycle for trafic lights in a busy intersection
+
+
+
+> i and ii have a mathematical solution and machine learning would be a waste of time. ii and iv both are suitable for the learning approach.
+
+
+## Bins and Marbles
+
+We have 2 opaque bags, each containing 2 balls. One bag has 2 black balls and the other has a black ball and a white ball. You pick a bag at random and then pick one of the balls in that bag at random. When you look at the ball, it is black. You now pick the second ball from that same bag. What is the probability that this ball is also black?
+
+
+(a) 1/4
+(b) 1/3
+(c) 1/2
+(d) 2/3
+(e) 3/4
+
+
+> The probability is 2/3. There are three possible outcomes. Two of those outcomes yield two black balls. 
+
+
+Consider a sample of 10 marbles drawn from a bin that has red and green marbles. The probability that any marble we draw is red is $\mu = 0.55$ (independently, with replacement). We address the probability of getting no red marbles ($\nu = 0$) in the following cases:
+
+4. We draw only one such sample. Compute the probability that $\nu = 0$. The closest answer is (`closest answer' means: |your answer - given option| is closest to 0):
+
+```{r}
+1 - .55
+```
+
+> It is $0.45$ as the probability. $\mu = 0.55$ applies to the event where a single marble out of ten is red. 
+
+5. We draw $1000$ independent samples. Compute the probability that (at least) one of the samples has $\mu = 0$. The closest answer is:
+
+```{r}
+no.red <- .45^10  # probability of no red in 10 draws
+one.red <- (1 - no.red)^1000  # probability that at least one marble is red in 1000
+res <- 1 - one.red  # probability that at least one sample has v = 0
+res
+```
+
+
+## Feasibility of Learning
+
+Consider a boolean target function over a 3-dimensional input space $\chi = \{0, 1\}^3$ (instead of our $\pm1$ binary convention, we use 0,1 here since it is standard for boolean functions). We are given a data set $D$ of five examples represented in the table below, where $y_n = f(x_n)$ for $n = 1,2,3,4,5$.
+
+
+        $x_n$        $y_n$
+------  ------  ---  ------
+0       0       0    0
+0       0       1    1
+0       1       0    1
+0       1       1    0
+1       0       0    1
+
+
+Note that in this simple boolean case, we can enumerate the entire input space (since there are only $2^3 = 8$ distinct input vectors), and we can enumerate the set of all possible target functions (there are only $2^8 = 256$ distinct boolean function on 3 possible inputs).
+
+
+Let us look at the problem of learning $f$. Since $f$ is unkown except inside $D$, any function that agrees with $D$ could conceivably be $f$. Since there are only 3 points in $X$ outside $D$, there are only $2^3 = 8$ such functions.
+
+The remaining points in $X$ which are not in $D$ are: 101, 110, and 111. We want to determine the hypothesis that agrees the most with the possible target functions. In order to quantify this, count how many of the 8 possible target functions agree with each hypothesis on all 3 points, how many agree with just 2 points, with just 1, and how many do not agree on any points. The final score for each hypothesis computed as follows:
+
+**Score =** *(# target functions agreeing with hypothesis on all 3 points) \* 3 + (# of target functions agreeing with hypothesis on 2 points) \* 2 + (# of target functions agreeing with hypothesis on 1 points) \* 1 + (# of taret functions agreeing with hypothesis on 0 points) \* 0.*
+
+6. Which hypothesis $g$ agrees the most with the possible target functions in terms of the above score?
+
+
+```{r}
+g.matrix <- matrix(
+  c(0, 0, 0, 0, 1, 1, 1, 1, 
+    0, 0, 1, 1, 0, 0, 1, 1, 
+    0, 1, 0, 1, 0, 1, 0, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 
+    0, 0, 0, 0, 0, 0, 0, 0, 
+    0, 1, 1, 0, 1, 0, 0, 1, 
+    1, 0, 0, 1, 0, 1, 1, 0, 
+    0, 1, 1, 0, 1, NA, NA, NA),
+  nrow = 8,
+  ncol = 8)
+data <- as.data.frame(g.matrix)
+colnames(data) <- c("x.1", "x.2", "x.3", "a", "b", "c", "d", "y.n")
+
+data
+
+count.score <- function(data, column) {
+  return(sum(apply(data[, c(1:3)], 2, function(x) sum(x != column))))
+}
+
+a.score <- count.score(data, data[4])
+b.score <- count.score(data, data[5])
+c.score <- count.score(data, data[6])
+d.score <- count.score(data, data[7])
+
+cat("a) ", a.score, "\n",
+    "b) ", b.score, "\n", 
+    "c) ", c.score, "\n",
+    "d) ", d.score, sep = "")
+```
+
+> e) They are all equivalent (equal scores for $g$ in [a] through [d]).
+
+
+## The Perceptron Learning Algorithm
+
+In this problem, you will create your own target function $f$ and data set $D$ to see how the Perceptron Learning Algorithm works. Take $d = 2$ so you can visualize the problem, and assume $\chi = [-1, 1] * [-1, 1]$ with uniform probability of picking each $x \in \chi$. 
+
+In each run, choose a random line in the plance as your target function $f$ (do this by taking two random, uniformly distributed points in $[-1, 1] * [-1, 1]$ and taking the line passing through them), where one side of the line maps to $+1$ and the other maps to $-1$. Choose the inputs $x_n$ of the data set as random points (uniformly in $\chi$), and evaluate the target function on each $x_n$ to get the corresponding output $y_n$.
+
+Now, in each run, use the Perceptron Learning Algorithm to find $g$. Start the PLA with the weight vector **w** being all zeros, and at each iteration have the algorithm choose a oint randomly from the set of misclassified points. We are interested in two quantities: the number of iterations that PLA takes to converge to $g$, and the disagreement between $f$ and $g$ which is $\mathbb{P}[f(x) \neq g(x)]$ (the probability that $f$ and $g$ will disagree on their classification of a random point). You can either calculate this probability exactly, or approximate it by generating a sufficiently large, seperate set of points to estimate it.
+
+In order to get a reliable estimate for these two quantities, you should repeat the experiment for 1000 runs (each run as specified above) and take the average over these runs.
+
+
+
+```{r}
+data.generate <- function(n = 10, ext = 1) {
+  # Generates uniformly distributed data of n
+  # in space [-1, 1] with a random line
+  #
+  # Args: 
+  #   n  :  Number of sample points.
+  #   ext:  Border of two-dimensional space [-ext, ext]
+  #
+  # Returns: 
+  #   List with data frame and slope and intercept
+  #   of randomly generated line
+  #
+  # Source:
+  #   By CLana: http://pastebin.com/TLv0ZnTb
+  
+  # Generate uniformly distributed points
+  x1 <- runif(n, -ext, ext)
+  x2 <- runif(n, -ext, ext)
+  
+  # Draw a random line in the area
+  point1 <- runif(2, -ext, ext)
+  point2 <- runif(2, -ext, ext)
+  slope <- (point2[2] - point1[2]) / (point2[1] - point1[1])
+  intercept <- point1[2] - slope * point1[1]
+  
+  # Calculate dependent values
+  y <- as.numeric(x1 * slope + intercept > x2) * 2 - 1
+  
+  data = data.frame(x0 = 1, x1, x2, y)
+  
+  return(list(data = data, slope = slope, intercept = intercept))
+}
+```
+
+
+```{r}
+PLA <- function(data, max.iter = 2000) {
+  # Runs the Perceptron Learning Algorithm to a data set.
+  # Weight vectors are all zero at the beginning. 
+  #
+  # Args: 
+  #   data    :   Data frame of points in space [-1, 1].
+  #   max.iter:   Maximum of iterations for perceptron algorithm.
+  #
+  # Returns: 
+  #   List with calculated weights of perceptron, number of
+  #   counts for the algorithm to finish and data frame with
+  #   predicted values. 
+  
+  count <- 0  # initialize counter
+  w <- c(0, 0, 0)  # initialize weights
+  
+  # Loop until max iterations is reached
+  while (count < max.iter) {
+    
+    # Predict classification of points according to current weights
+    h.x <- apply(data[, c(1:3)], 1, function(x) sign(sum(w * x)))
+    
+    data$h.x <- h.x  # Add predicted values to data frame
+    
+    # Find misclassified points in data
+    misc.points <- data[data$y != data$h.x, ]
+    
+    if (nrow(misc.points) == 0) {  # there are no more misclassified points
+      return(list(w = w, count = count, data = data))  # return result
+    } else {  # there are still misclassified points
+      
+      # Pick a misclassified point randomly
+      misc.point <- sample(c(1:nrow(misc.points)), 1) 
+      
+      # Get the values of the misclassified points
+      misc.vector <- as.numeric(misc.points[misc.point, c(1:4)])
+      
+      # Calculate updated weight vector
+      w <- w + misc.vector[4] * misc.vector[c(1:3)]
+      
+      count <- count + 1  # update counter
+    }
+  }
+  
+  return(list(w = w, count = count, data = data))  # return results
+}
+```
+
+```{r}
+simulate <- function(n, iterations) {
+  # Simulates PLA of iterations and calculates the mean
+  # of trials for data to converge and the mean fraction
+  # of misclassified points.
+  #
+  # Args: 
+  #   n         : Number of points generated in space [-1, 1].
+  #   iterations: Number of iterations of PlA.
+  #
+  # Returns: 
+  #   None
+  
+  counter <- c()  # initialize counter
+  fractions <- c()  # initialize fractions
+  
+  # Run loop according to iterations
+  for (i in c(1:iterations)) {
+    
+    # Generate data
+    generated.data <- data.generate(n = n)
+    pla.model <- PLA(generated.data$data)
+    
+    # Calculate number of iterations for a random PLA
+    counter <- c(counter, pla.model$count)
+    
+    # Generate random point in space
+    random.point <- c(1, runif(2, -1, 1))  
+    
+    # Predict y of random point according to f
+    f.predict <- as.numeric(random.point[2] * generated.data$slope + 
+                              generated.data$intercept > 
+                              random.point[3]) * 2 - 1
+    
+    # Predict y of random point according to g
+    g.predict <- sign(sum(pla.model$w * random.point))
+    
+    # Add 1 if f and g disagree on random point to fractions, else 0
+    fractions <- c(fractions, f.predict != g.predict)
+  }
+  
+  # Calcuate mean proportion of misclassified points
+  fractions <- mean(fractions)
+  
+  # Output results
+  cat("Mean number of iterations: ", mean(counter), "\n",
+      "Out of sample error: ", fractions, "\n", sep = "")
+}
+```
+
+
+```{r}
+generated.data <- data.generate(n = 100)
+pla.model <- PLA(generated.data$data)
+w <- pla.model$w
+w.inter <- (-w[1]) / w[3]
+w.slope <- (-w[2]) / w[3]
+
+ggplot(generated.data$data, aes(x = x1, y = x2, colour = as.factor(y))) + 
+  geom_point(size = 2) + 
+  geom_abline(intercept = generated.data$intercept, slope = generated.data$slope) + 
+  geom_abline(intercept = w.inter, slope = w.slope, colour = "blue") + 
+  scale_y_continuous(limits = c(-1, 1)) + 
+  scale_x_continuous(limits = c(-1, 1)) +
+  xlab("x-Axis") + 
+  ylab("y-Axis") + 
+  ggtitle("Perceptron Learning Algorithm for n = 100") + 
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+
+7. Take $N = 10$. How many iterations does it take on average for the PLA to converge for $N = 10$ training points? Pick the value closest to your results (again, 'closest' means: |your answer - given option| is closest to 0).
+
+8. Which of the following is closest to $\mathbb{P}[f(x) \neq g(x)]$ for $N = 10$?
+
+```{r}
+simulate(10, 1000)
+```
+
+9. Now, try $N = 100$. How many iterations does it take on average for the PLA to converge for $N = 100$ training points? Pick the value closest to your results.
+
+10. Which of the following is closest to $\mathbb{P}[f(x) \neq g(x)]$ for $N = 100$?
+
+```{r}
+simulate(100, 1000)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
